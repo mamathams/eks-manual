@@ -13,7 +13,6 @@ pipeline {
   parameters {
     choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform action')
     booleanParam(name: 'AUTO_APPLY', defaultValue: false, description: 'Skip manual approval for apply only')
-    booleanParam(name: 'FORCE_RUN', defaultValue: false, description: 'Run even when no Terraform files changed')
     string(name: 'AWS_REGION', defaultValue: 'us-east-1', description: 'AWS region')
     string(name: 'EXPECTED_ACCOUNT_ID', defaultValue: '136191772987', description: 'Fail if account mismatch')
   }
@@ -34,33 +33,7 @@ pipeline {
       }
     }
 
-    stage('Terraform Gate') {
-      when {
-        not {
-          anyOf {
-            expression { return params.FORCE_RUN }
-            changeset "**/*.tf"
-            changeset "**/*.tfvars"
-            changeset "**/.terraform.lock.hcl"
-          }
-        }
-      }
-      steps {
-        script {
-          echo 'No Terraform file changes detected. Skipping Terraform stages. Set FORCE_RUN=true to run anyway.'
-        }
-      }
-    }
-
     stage('Precheck AWS Identity') {
-      when {
-        anyOf {
-          expression { return params.FORCE_RUN }
-          changeset "**/*.tf"
-          changeset "**/*.tfvars"
-          changeset "**/.terraform.lock.hcl"
-        }
-      }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           script {
@@ -85,14 +58,6 @@ pipeline {
     }
 
     stage('Terraform Init') {
-      when {
-        anyOf {
-          expression { return params.FORCE_RUN }
-          changeset "**/*.tf"
-          changeset "**/*.tfvars"
-          changeset "**/.terraform.lock.hcl"
-        }
-      }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           script {
@@ -107,14 +72,6 @@ pipeline {
     }
 
     stage('Terraform Plan') {
-      when {
-        anyOf {
-          expression { return params.FORCE_RUN }
-          changeset "**/*.tf"
-          changeset "**/*.tfvars"
-          changeset "**/.terraform.lock.hcl"
-        }
-      }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           script {
@@ -138,15 +95,7 @@ pipeline {
 
     stage('Approval') {
       when {
-        allOf {
-          anyOf {
-            expression { return params.FORCE_RUN }
-            changeset "**/*.tf"
-            changeset "**/*.tfvars"
-            changeset "**/.terraform.lock.hcl"
-          }
-          expression { return params.ACTION == 'destroy' || !params.AUTO_APPLY }
-        }
+        expression { return params.ACTION == 'destroy' || !params.AUTO_APPLY }
       }
       steps {
         timeout(time: 20, unit: 'MINUTES') {
@@ -162,14 +111,6 @@ pipeline {
     }
 
     stage('Terraform Execute') {
-      when {
-        anyOf {
-          expression { return params.FORCE_RUN }
-          changeset "**/*.tf"
-          changeset "**/*.tfvars"
-          changeset "**/.terraform.lock.hcl"
-        }
-      }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           script {
@@ -186,7 +127,13 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'tfplan', allowEmptyArchive: true
+      script {
+        if (fileExists('tfplan')) {
+          archiveArtifacts artifacts: 'tfplan'
+        } else {
+          echo 'No tfplan file to archive in this run.'
+        }
+      }
     }
   }
 }
