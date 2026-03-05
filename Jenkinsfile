@@ -62,21 +62,23 @@ pipeline {
         }
       }
       steps {
-        script {
-          if (isUnix()) {
-            sh '''#!/usr/bin/env bash
-              set -euo pipefail
-              ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-              echo "Current AWS Account: ${ACCOUNT_ID}"
-              [ "${ACCOUNT_ID}" = "${EXPECTED_ACCOUNT_ID}" ] || { echo "ERROR: account mismatch"; exit 1; }
-            '''
-          } else {
-            bat '''
-              @echo off
-              for /f %%i in ('aws sts get-caller-identity --query Account --output text') do set ACCOUNT_ID=%%i
-              echo Current AWS Account: %ACCOUNT_ID%
-              if /I not "%ACCOUNT_ID%"=="%EXPECTED_ACCOUNT_ID%" exit /b 1
-            '''
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          script {
+            if (isUnix()) {
+              sh '''#!/usr/bin/env bash
+                set -euo pipefail
+                ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                echo "Current AWS Account: ${ACCOUNT_ID}"
+                [ "${ACCOUNT_ID}" = "${EXPECTED_ACCOUNT_ID}" ] || { echo "ERROR: account mismatch"; exit 1; }
+              '''
+            } else {
+              bat '''
+                @echo off
+                for /f %%i in ('aws sts get-caller-identity --query Account --output text') do set ACCOUNT_ID=%%i
+                echo Current AWS Account: %ACCOUNT_ID%
+                if /I not "%ACCOUNT_ID%"=="%EXPECTED_ACCOUNT_ID%" exit /b 1
+              '''
+            }
           }
         }
       }
@@ -92,11 +94,13 @@ pipeline {
         }
       }
       steps {
-        script {
-          if (isUnix()) {
-            sh 'terraform init -input=false'
-          } else {
-            bat 'terraform init -input=false'
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          script {
+            if (isUnix()) {
+              sh 'terraform init -input=false'
+            } else {
+              bat 'terraform init -input=false'
+            }
           }
         }
       }
@@ -112,18 +116,20 @@ pipeline {
         }
       }
       steps {
-        script {
-          if (isUnix()) {
-            if (params.ACTION == 'destroy') {
-              sh 'terraform plan -destroy -input=false -out=tfplan'
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          script {
+            if (isUnix()) {
+              if (params.ACTION == 'destroy') {
+                sh 'terraform plan -destroy -input=false -out=tfplan'
+              } else {
+                sh 'terraform plan -input=false -out=tfplan'
+              }
             } else {
-              sh 'terraform plan -input=false -out=tfplan'
-            }
-          } else {
-            if (params.ACTION == 'destroy') {
-              bat 'terraform plan -destroy -input=false -out=tfplan'
-            } else {
-              bat 'terraform plan -input=false -out=tfplan'
+              if (params.ACTION == 'destroy') {
+                bat 'terraform plan -destroy -input=false -out=tfplan'
+              } else {
+                bat 'terraform plan -input=false -out=tfplan'
+              }
             }
           }
         }
@@ -165,11 +171,13 @@ pipeline {
         }
       }
       steps {
-        script {
-          if (isUnix()) {
-            sh 'terraform apply -input=false -auto-approve tfplan'
-          } else {
-            bat 'terraform apply -input=false -auto-approve tfplan'
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          script {
+            if (isUnix()) {
+              sh 'terraform apply -input=false -auto-approve tfplan'
+            } else {
+              bat 'terraform apply -input=false -auto-approve tfplan'
+            }
           }
         }
       }
