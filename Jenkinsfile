@@ -47,7 +47,11 @@ pipeline {
       }
       steps {
         script {
-          error('No Terraform file changes detected. Set FORCE_RUN=true to run anyway.')
+          if (currentBuild.previousBuild == null) {
+            echo 'First build detected (empty changelog). Continuing without Terraform changeset check.'
+          } else {
+            error('No Terraform file changes detected. Set FORCE_RUN=true to run anyway.')
+          }
         }
       }
     }
