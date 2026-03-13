@@ -23,14 +23,3 @@ resource "aws_eks_access_policy_association" "console_user" {
 
   depends_on = [aws_eks_access_entry.console_user]
 }
-
-resource "kubernetes_namespace_v1" "pod_ns" {
-  metadata {
-    name = "demo"
-  }
-
-  depends_on = [
-    aws_eks_cluster.eks_cluster,
-    aws_eks_node_group.node_group
-  ]
-}
