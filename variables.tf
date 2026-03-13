@@ -81,3 +81,15 @@ variable "pod_image" {
   type        = string
   default     = "nginx:1.27-alpine"
 }
+
+variable "eks_access_principal_arn" {
+  description = "IAM principal ARN (user/role) to grant EKS console Kubernetes UI access (leave empty to skip)"
+  type        = string
+  default     = ""
+}
+
+variable "eks_access_policy_arn" {
+  description = "EKS cluster access policy ARN to associate with eks_access_principal_arn"
+  type        = string
+  default     = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+}
