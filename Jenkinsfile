@@ -77,12 +77,23 @@ pipeline {
           script {
             if (isUnix()) {
               if (params.ACTION == 'destroy') {
+                sh '''#!/usr/bin/env bash
+                  set -euo pipefail
+                  # If the Kubernetes API is unreachable, these resources can block destroy.
+                  # Remove them from state before planning a destroy.
+                  terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0] || true
+                '''
                 sh 'terraform plan -destroy -input=false -out=tfplan'
               } else {
                 sh 'terraform plan -input=false -out=tfplan'
               }
             } else {
               if (params.ACTION == 'destroy') {
+                bat '''
+                  @echo off
+                  terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0]
+                  exit /b 0
+                '''
                 bat 'terraform plan -destroy -input=false -out=tfplan'
               } else {
                 bat 'terraform plan -input=false -out=tfplan'

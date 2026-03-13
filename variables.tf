@@ -99,3 +99,9 @@ variable "eks_access_policy_arn" {
   type        = string
   default     = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
 }
+
+variable "manage_kubernetes_resources" {
+  description = "Whether Terraform should manage in-cluster Kubernetes resources (namespace/pod). Disable to destroy the EKS infra even if the cluster API is unreachable."
+  type        = bool
+  default     = true
+}

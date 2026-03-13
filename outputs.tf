@@ -41,10 +41,10 @@ output "node_group_arn" {
 
 output "pod_namespace" {
   description = "Namespace where the pod is created"
-  value       = kubernetes_namespace_v1.pod_ns.metadata[0].name
+  value       = try(kubernetes_namespace_v1.pod_ns[0].metadata[0].name, null)
 }
 
 output "pod_name" {
   description = "Name of the created pod"
-  value       = kubernetes_pod_v1.app.metadata[0].name
+  value       = try(kubernetes_pod_v1.app[0].metadata[0].name, null)
 }

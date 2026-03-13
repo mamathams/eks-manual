@@ -1,4 +1,6 @@
 resource "kubernetes_namespace_v1" "pod_ns" {
+  count = var.manage_kubernetes_resources ? 1 : 0
+
   metadata {
     name = var.pod_namespace
   }
@@ -13,9 +15,11 @@ resource "kubernetes_namespace_v1" "pod_ns" {
 }
 
 resource "kubernetes_pod_v1" "app" {
+  count = var.manage_kubernetes_resources ? 1 : 0
+
   metadata {
     name      = var.pod_name
-    namespace = kubernetes_namespace_v1.pod_ns.metadata[0].name
+    namespace = kubernetes_namespace_v1.pod_ns[0].metadata[0].name
 
     labels = {
       app = var.pod_name
