@@ -38,3 +38,13 @@ output "node_group_arn" {
   description = "Node Group ARN"
   value       = aws_eks_node_group.node_group.arn
 }
+
+output "pod_namespace" {
+  description = "Namespace where the pod is created"
+  value       = kubernetes_namespace_v1.pod_ns.metadata[0].name
+}
+
+output "pod_name" {
+  description = "Name of the created pod"
+  value       = kubernetes_pod_v1.app.metadata[0].name
+}

@@ -57,3 +57,21 @@ variable "max_size" {
   type        = number
   default     = 1
 }
+
+variable "pod_namespace" {
+  description = "Namespace for the example pod"
+  type        = string
+  default     = "demo"
+}
+
+variable "pod_name" {
+  description = "Name for the example pod"
+  type        = string
+  default     = "nginx"
+}
+
+variable "pod_image" {
+  description = "Container image for the example pod"
+  type        = string
+  default     = "nginx:1.27-alpine"
+}
