@@ -115,7 +115,7 @@ pipeline {
                   # Remove them from state before planning a destroy.
                   terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0] || true
                 '''
-                sh 'TF_VAR_manage_kubernetes_resources=false terraform plan -destroy -input=false -out=tfplan'
+                sh 'TF_VAR_manage_kubernetes_resources=false terraform plan -destroy -refresh=false -input=false -out=tfplan'
               } else {
                 sh 'terraform plan -input=false -out=tfplan'
               }
@@ -127,7 +127,7 @@ pipeline {
                   terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0]
                   exit /b 0
                 '''
-                bat 'set TF_VAR_manage_kubernetes_resources=false&& terraform plan -destroy -input=false -out=tfplan'
+                bat 'set TF_VAR_manage_kubernetes_resources=false&& terraform plan -destroy -refresh=false -input=false -out=tfplan'
               } else {
                 bat 'terraform plan -input=false -out=tfplan'
               }
