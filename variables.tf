@@ -16,6 +16,12 @@ variable "cluster_version" {
   default     = "1.29"
 }
 
+variable "cluster_authentication_mode" {
+  description = "EKS cluster authentication mode (must be API or API_AND_CONFIG_MAP to use EKS Access Entries)"
+  type        = string
+  default     = "API_AND_CONFIG_MAP"
+}
+
 variable "vpc_cidr" {
   description = "VPC CIDR Block"
   type        = string

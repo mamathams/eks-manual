@@ -200,6 +200,10 @@ resource "aws_eks_cluster" "eks_cluster" {
   version  = var.cluster_version
   role_arn = aws_iam_role.eks_cluster_role.arn
 
+  access_config {
+    authentication_mode = var.cluster_authentication_mode
+  }
+
   vpc_config {
     subnet_ids = [
       aws_subnet.private_1.id,
