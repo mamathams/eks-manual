@@ -40,6 +40,12 @@ variable "instance_type" {
   default     = "t3.medium"
 }
 
+variable "node_ami_type" {
+  description = "Managed node group AMI type (set to AL2023 to avoid Amazon Linux 2 deprecation)"
+  type        = string
+  default     = "AL2023_x86_64_STANDARD"
+}
+
 variable "desired_size" {
   description = "Node group desired size"
   type        = number
