@@ -112,8 +112,14 @@ pipeline {
                   set -euo pipefail
                   export TF_VAR_manage_kubernetes_resources=false
                   # If the Kubernetes API is unreachable, these resources can block destroy.
-                  # Remove them from state before planning a destroy.
-                  terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0] || true
+                  # Remove them from state before planning a destroy (fail if removal is needed but cannot be done).
+                  if terraform state list | grep -q "^kubernetes_pod_v1\\.app\\[0\\]$"; then
+                    terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0]
+                  fi
+                  if terraform state list | grep -q "^kubernetes_namespace_v1\\.pod_ns\\[0\\]$"; then
+                    terraform state rm -lock-timeout=5m kubernetes_namespace_v1.pod_ns[0]
+                  fi
+                  terraform state list | grep "^kubernetes_" || true
                 '''
                 sh 'TF_VAR_manage_kubernetes_resources=false terraform plan -destroy -refresh=false -input=false -out=tfplan'
               } else {
@@ -124,8 +130,17 @@ pipeline {
                 bat '''
                   @echo off
                   set TF_VAR_manage_kubernetes_resources=false
-                  terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0]
-                  exit /b 0
+                  terraform state list | findstr /R /C:"^kubernetes_pod_v1.app\\[0\\]$" >NUL
+                  if %ERRORLEVEL%==0 (
+                    terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0]
+                    if not %ERRORLEVEL%==0 exit /b 1
+                  )
+                  terraform state list | findstr /R /C:"^kubernetes_namespace_v1.pod_ns\\[0\\]$" >NUL
+                  if %ERRORLEVEL%==0 (
+                    terraform state rm -lock-timeout=5m kubernetes_namespace_v1.pod_ns[0]
+                    if not %ERRORLEVEL%==0 exit /b 1
+                  )
+                  terraform state list | findstr /R /C:"^kubernetes_" || exit /b 0
                 '''
                 bat 'set TF_VAR_manage_kubernetes_resources=false&& terraform plan -destroy -refresh=false -input=false -out=tfplan'
               } else {
