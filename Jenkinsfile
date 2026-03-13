@@ -15,6 +15,7 @@ pipeline {
     booleanParam(name: 'AUTO_APPLY', defaultValue: false, description: 'Skip manual approval for apply only')
     string(name: 'AWS_REGION', defaultValue: 'us-east-1', description: 'AWS region')
     string(name: 'EXPECTED_ACCOUNT_ID', defaultValue: '136191772987', description: 'Fail if account mismatch')
+    booleanParam(name: 'MANAGE_K8S_RESOURCES', defaultValue: true, description: 'Manage in-cluster resources (namespace/pod) via Terraform')
   }
 
   environment {
@@ -24,6 +25,7 @@ pipeline {
     AWS_REGION = "${params.AWS_REGION}"
     AWS_DEFAULT_REGION = "${params.AWS_REGION}"
     TF_VAR_region = "${params.AWS_REGION}"
+    TF_VAR_manage_kubernetes_resources = "${params.MANAGE_K8S_RESOURCES}"
   }
 
   stages {
@@ -71,6 +73,35 @@ pipeline {
       }
     }
 
+    stage('Update kubeconfig') {
+      steps {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          script {
+            if (isUnix()) {
+              sh '''#!/usr/bin/env bash
+                set -euo pipefail
+                if aws eks describe-cluster --region us-east-1 --name manual-eks-cluster >/dev/null 2>&1; then
+                  aws eks update-kubeconfig --region us-east-1 --name manual-eks-cluster
+                else
+                  echo "EKS cluster manual-eks-cluster not found yet; skipping kubeconfig update."
+                fi
+              '''
+            } else {
+              bat '''
+                @echo off
+                aws eks describe-cluster --region us-east-1 --name manual-eks-cluster >NUL 2>NUL
+                if %ERRORLEVEL%==0 (
+                  aws eks update-kubeconfig --region us-east-1 --name manual-eks-cluster
+                ) else (
+                  echo EKS cluster manual-eks-cluster not found yet; skipping kubeconfig update.
+                )
+              '''
+            }
+          }
+        }
+      }
+    }
+
     stage('Terraform Plan') {
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
@@ -79,11 +110,12 @@ pipeline {
               if (params.ACTION == 'destroy') {
                 sh '''#!/usr/bin/env bash
                   set -euo pipefail
+                  export TF_VAR_manage_kubernetes_resources=false
                   # If the Kubernetes API is unreachable, these resources can block destroy.
                   # Remove them from state before planning a destroy.
                   terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0] || true
                 '''
-                sh 'terraform plan -destroy -input=false -out=tfplan'
+                sh 'TF_VAR_manage_kubernetes_resources=false terraform plan -destroy -input=false -out=tfplan'
               } else {
                 sh 'terraform plan -input=false -out=tfplan'
               }
@@ -91,10 +123,11 @@ pipeline {
               if (params.ACTION == 'destroy') {
                 bat '''
                   @echo off
+                  set TF_VAR_manage_kubernetes_resources=false
                   terraform state rm -lock-timeout=5m kubernetes_pod_v1.app[0] kubernetes_namespace_v1.pod_ns[0]
                   exit /b 0
                 '''
-                bat 'terraform plan -destroy -input=false -out=tfplan'
+                bat 'set TF_VAR_manage_kubernetes_resources=false&& terraform plan -destroy -input=false -out=tfplan'
               } else {
                 bat 'terraform plan -input=false -out=tfplan'
               }
@@ -126,9 +159,17 @@ pipeline {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
           script {
             if (isUnix()) {
-              sh 'terraform apply -input=false -auto-approve tfplan'
+              if (params.ACTION == 'destroy') {
+                sh 'TF_VAR_manage_kubernetes_resources=false terraform apply -input=false -auto-approve tfplan'
+              } else {
+                sh 'terraform apply -input=false -auto-approve tfplan'
+              }
             } else {
-              bat 'terraform apply -input=false -auto-approve tfplan'
+              if (params.ACTION == 'destroy') {
+                bat 'set TF_VAR_manage_kubernetes_resources=false&& terraform apply -input=false -auto-approve tfplan'
+              } else {
+                bat 'terraform apply -input=false -auto-approve tfplan'
+              }
             }
           }
         }

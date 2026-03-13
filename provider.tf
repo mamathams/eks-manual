@@ -3,13 +3,11 @@ provider "aws" {
 }
 
 data "aws_eks_cluster" "this" {
-  name       = var.cluster_name
-  depends_on = [aws_eks_cluster.eks_cluster]
+  name = aws_eks_cluster.eks_cluster.name
 }
 
 data "aws_eks_cluster_auth" "this" {
-  name       = var.cluster_name
-  depends_on = [aws_eks_cluster.eks_cluster]
+  name = aws_eks_cluster.eks_cluster.name
 }
 
 provider "kubernetes" {
